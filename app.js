@@ -17,12 +17,14 @@
     draftAudio: null,
     currentAudio: null,
     currentUrl: null,
-    directPlayId: null
+    directPlayId: null,
+    expandedManageId: null
   };
 
   const els = {
     statusText: document.getElementById("statusText"),
-    modeToggle: document.getElementById("modeToggle"),
+    answerTab: document.getElementById("answerTab"),
+    manageTab: document.getElementById("manageTab"),
     playMode: document.getElementById("playMode"),
     manageMode: document.getElementById("manageMode"),
     playList: document.getElementById("playList"),
@@ -31,6 +33,7 @@
     addForm: document.getElementById("addForm"),
     newQuestionText: document.getElementById("newQuestionText"),
     newRecordButton: document.getElementById("newRecordButton"),
+    newPreviewButton: document.getElementById("newPreviewButton"),
     newAudioFile: document.getElementById("newAudioFile"),
     newAudioState: document.getElementById("newAudioState"),
     newFavorite: document.getElementById("newFavorite"),
@@ -64,15 +67,18 @@
       }
     } catch (error) {
       setStatus("此瀏覽器無法使用 IndexedDB，請改用手機或桌機的正式瀏覽器開啟");
-      els.modeToggle.disabled = true;
+      els.answerTab.disabled = true;
+      els.manageTab.disabled = true;
     }
   }
 
   function bindEvents() {
-    els.modeToggle.addEventListener("click", async () => {
-      state.settings.mode = state.settings.mode === "manage" ? "play" : "manage";
-      await saveSettings();
-      renderMode();
+    els.answerTab.addEventListener("click", () => setMode("play"));
+    els.manageTab.addEventListener("click", () => setMode("manage"));
+
+    els.newPreviewButton.addEventListener("click", () => {
+      if (!state.draftAudio) return;
+      playBlob(state.draftAudio.blob, "正在試聽新增音檔");
     });
 
     els.addForm.addEventListener("submit", async (event) => {
@@ -96,6 +102,7 @@
       state.draftAudio = null;
       els.addForm.reset();
       els.newAudioState.textContent = "尚未加入回答音檔";
+      els.newPreviewButton.classList.add("hidden");
       await loadQuestions();
       render();
       setStatus("已新增問題");
@@ -108,6 +115,7 @@
       if (!file) return;
       state.draftAudio = { blob: file, type: file.type || "audio/mpeg", name: file.name };
       els.newAudioState.textContent = `已選擇：${file.name}`;
+      els.newPreviewButton.classList.remove("hidden");
       els.newAudioFile.value = "";
     });
 
@@ -126,11 +134,13 @@
 
   function renderMode() {
     const isManage = state.settings.mode === "manage";
-    els.modeToggle.textContent = isManage ? "播放" : "管理";
-    els.modeToggle.setAttribute("aria-pressed", String(isManage));
+    els.answerTab.classList.toggle("is-active", !isManage);
+    els.manageTab.classList.toggle("is-active", isManage);
+    els.answerTab.setAttribute("aria-pressed", String(!isManage));
+    els.manageTab.setAttribute("aria-pressed", String(isManage));
     els.playMode.classList.toggle("hidden", isManage);
     els.manageMode.classList.toggle("hidden", !isManage);
-    setStatus(isManage ? "管理模式：可新增、錄音、排序與備份" : "播放模式：點一下立即播放");
+    setStatus(isManage ? "管理頁面：可新增、錄音、排序與備份" : "回答頁面：點一下立即播放");
   }
 
   function renderPlayList() {
@@ -165,18 +175,37 @@
 
     sorted.forEach((question, index) => {
       const item = els.manageItemTemplate.content.firstElementChild.cloneNode(true);
+      const summary = item.querySelector(".manage-summary");
+      const detail = item.querySelector(".manage-detail");
+      const title = item.querySelector(".manage-title");
+      const summaryMeta = item.querySelector(".manage-summary-meta");
       const textInput = item.querySelector(".question-input");
       const favoriteInput = item.querySelector(".favorite-input");
       const audioStatus = item.querySelector(".audio-status");
 
+      const isExpanded = state.expandedManageId === question.id;
+      item.classList.toggle("is-expanded", isExpanded);
+      detail.classList.toggle("hidden", !isExpanded);
+      summary.setAttribute("aria-expanded", String(isExpanded));
+      title.textContent = question.text;
+      summaryMeta.textContent = [
+        question.favorite ? "置頂" : "一般",
+        question.audioBlob ? "已有音檔" : "尚無音檔"
+      ].join("・");
       textInput.value = question.text;
       favoriteInput.checked = question.favorite;
       audioStatus.textContent = question.audioBlob ? "已有音檔" : "尚無音檔";
+
+      summary.addEventListener("click", () => {
+        state.expandedManageId = isExpanded ? null : question.id;
+        renderManageList();
+      });
 
       item.querySelector(".save-button").addEventListener("click", async () => {
         question.text = textInput.value.trim() || question.text;
         question.favorite = favoriteInput.checked;
         question.updatedAt = Date.now();
+        state.expandedManageId = question.id;
         await putQuestion(question);
         await loadQuestions();
         render();
@@ -192,6 +221,7 @@
         question.audioType = file.type || "audio/mpeg";
         question.audioName = file.name;
         question.updatedAt = Date.now();
+        state.expandedManageId = question.id;
         await putQuestion(question);
         await loadQuestions();
         render();
@@ -279,6 +309,7 @@
     if (target === "new") {
       state.draftAudio = { blob, type, name };
       els.newAudioState.textContent = "已錄製回答音檔";
+      els.newPreviewButton.classList.remove("hidden");
       setStatus("錄音完成");
       return;
     }
@@ -289,6 +320,7 @@
     question.audioType = type;
     question.audioName = name;
     question.updatedAt = Date.now();
+    state.expandedManageId = question.id;
     await putQuestion(question);
     await loadQuestions();
     render();
@@ -309,40 +341,57 @@
       return;
     }
 
+    document.querySelectorAll(".answer-button").forEach((button) => button.classList.remove("is-playing"));
+    if (sourceButton) sourceButton.classList.add("is-playing");
+    await playBlob(question.audioBlob, `正在播放：${question.text}`, () => {
+      if (sourceButton) sourceButton.classList.remove("is-playing");
+    });
+  }
+
+  async function playBlob(blob, playingMessage, onDone) {
     stopCurrentAudio();
-    const url = URL.createObjectURL(question.audioBlob);
+    const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
     state.currentAudio = audio;
     state.currentUrl = url;
 
-    document.querySelectorAll(".answer-button").forEach((button) => button.classList.remove("is-playing"));
-    if (sourceButton) sourceButton.classList.add("is-playing");
-
-    audio.addEventListener("ended", () => {
-      if (sourceButton) sourceButton.classList.remove("is-playing");
-      stopCurrentAudio();
+    audio.onended = () => {
+      cleanupCurrentAudio();
+      if (onDone) onDone();
       setStatus("播放完成");
-    });
+    };
 
-    audio.addEventListener("error", () => {
-      if (sourceButton) sourceButton.classList.remove("is-playing");
-      stopCurrentAudio();
+    audio.onerror = () => {
+      cleanupCurrentAudio();
+      if (onDone) onDone();
       setStatus("無法播放此音檔，請重新錄製或上傳");
-    });
+    };
 
     try {
       await audio.play();
-      setStatus(`正在播放：${question.text}`);
+      setStatus(playingMessage);
     } catch (error) {
-      if (sourceButton) sourceButton.classList.remove("is-playing");
+      cleanupCurrentAudio();
+      if (onDone) onDone();
       setStatus("瀏覽器需要點一下按鈕才能播放音檔");
     }
   }
 
   function stopCurrentAudio() {
     if (state.currentAudio) {
+      state.currentAudio.onended = null;
+      state.currentAudio.onerror = null;
       state.currentAudio.pause();
       state.currentAudio.src = "";
+    }
+
+    cleanupCurrentAudio();
+  }
+
+  function cleanupCurrentAudio() {
+    if (state.currentAudio) {
+      state.currentAudio.onended = null;
+      state.currentAudio.onerror = null;
       state.currentAudio = null;
     }
 
@@ -413,6 +462,13 @@
     await loadQuestions();
     render();
     setStatus("已調整排序");
+  }
+
+  async function setMode(mode) {
+    if (state.settings.mode === mode) return;
+    state.settings.mode = mode;
+    await saveSettings();
+    renderMode();
   }
 
   async function exportBackup() {
