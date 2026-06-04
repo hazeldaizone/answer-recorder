@@ -19,25 +19,29 @@
           <h1>回答錄音機</h1>
           <p id="statusText" class="status-text">本機資料，不會同步到雲端</p>
         </div>
-        <button id="modeToggle" class="mode-toggle" type="button" aria-pressed="false">管理</button>
       </header>
 
       <main>
+        <nav class="mode-tabs" aria-label="頁面切換">
+          <button id="answerTab" class="mode-tab is-active" type="button" aria-pressed="true">回答</button>
+          <button id="manageTab" class="mode-tab" type="button" aria-pressed="false">管理</button>
+        </nav>
+
         <section id="directPlayPanel" class="direct-panel hidden" aria-live="polite">
           <p class="direct-label">捷徑播放</p>
           <h2 id="directQuestion">正在準備音檔</h2>
           <button id="directPlayButton" class="primary-button" type="button">播放這個回答</button>
         </section>
 
-        <section id="playMode" class="mode-section" aria-label="播放模式">
+        <section id="playMode" class="mode-section" aria-label="回答頁面">
           <div id="playList" class="play-list"></div>
           <div id="emptyPlay" class="empty-state hidden">
             <h2>還沒有問題</h2>
-            <p>切換到管理模式，新增第一個問題與回答音檔。</p>
+            <p>切換到管理頁面，新增第一個問題與回答音檔。</p>
           </div>
         </section>
 
-        <section id="manageMode" class="mode-section hidden" aria-label="管理模式">
+        <section id="manageMode" class="mode-section hidden" aria-label="管理頁面">
           <div class="manage-block">
             <h2>新增問題</h2>
             <form id="addForm" class="add-form">
@@ -50,6 +54,7 @@
                 <p id="newAudioState">尚未加入回答音檔</p>
                 <div class="button-row">
                   <button id="newRecordButton" class="secondary-button" type="button">開始錄音</button>
+                  <button id="newPreviewButton" class="secondary-button hidden" type="button">試聽音檔</button>
                   <label class="file-button">
                     上傳音檔
                     <input id="newAudioFile" type="file" accept="audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/wav,audio/webm,audio/*">
@@ -59,7 +64,7 @@
 
               <label class="check-row">
                 <input id="newFavorite" type="checkbox">
-                <span>設為最愛，置頂顯示</span>
+                <span>設為置頂</span>
               </label>
 
               <button class="primary-button" type="submit">新增</button>
@@ -74,7 +79,7 @@
           <div class="manage-block">
             <h2>備份與還原</h2>
             <div class="button-row stack-mobile">
-              <button id="exportButton" class="secondary-button" type="button">匯出所有資料</button>
+              <button id="exportButton" class="secondary-button" type="button">備份問題和音檔</button>
               <label class="file-button">
                 匯入備份
                 <input id="importFile" type="file" accept=".zip,application/zip">
@@ -95,32 +100,39 @@
 
     <template id="manageItemTemplate">
       <article class="manage-item">
-        <div class="manage-main">
-          <label>
-            <span>問題</span>
-            <input class="question-input" type="text">
-          </label>
-          <div class="row-between">
-            <label class="check-row">
-              <input class="favorite-input" type="checkbox">
-              <span>最愛置頂</span>
-            </label>
-            <span class="audio-status"></span>
-          </div>
-        </div>
+        <button class="manage-summary" type="button" aria-expanded="false">
+          <span class="manage-title"></span>
+          <span class="manage-summary-meta"></span>
+        </button>
 
-        <div class="item-actions">
-          <button class="small-button save-button" type="button">儲存</button>
-          <button class="small-button record-button" type="button">重新錄音</button>
-          <label class="small-file-button">
-            上傳
-            <input class="upload-input" type="file" accept="audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/wav,audio/webm,audio/*">
-          </label>
-          <button class="small-button play-button" type="button">試播</button>
-          <button class="small-button copy-link-button" type="button">複製捷徑</button>
-          <button class="small-button move-up-button" type="button">上移</button>
-          <button class="small-button move-down-button" type="button">下移</button>
-          <button class="small-button danger-button delete-button" type="button">刪除</button>
+        <div class="manage-detail hidden">
+          <div class="manage-main">
+            <label>
+              <span>問題</span>
+              <input class="question-input" type="text">
+            </label>
+            <div class="row-between">
+              <label class="check-row">
+                <input class="favorite-input" type="checkbox">
+                <span>設為置頂</span>
+              </label>
+              <span class="audio-status"></span>
+            </div>
+          </div>
+
+          <div class="item-actions">
+            <button class="small-button save-button" type="button">儲存</button>
+            <button class="small-button record-button" type="button">重新錄音</button>
+            <label class="small-file-button">
+              上傳
+              <input class="upload-input" type="file" accept="audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/wav,audio/webm,audio/*">
+            </label>
+            <button class="small-button play-button" type="button">試播</button>
+            <button class="small-button copy-link-button" type="button">複製捷徑</button>
+            <button class="small-button move-up-button" type="button">上移</button>
+            <button class="small-button move-down-button" type="button">下移</button>
+            <button class="small-button danger-button delete-button" type="button">刪除</button>
+          </div>
         </div>
       </article>
     </template>
