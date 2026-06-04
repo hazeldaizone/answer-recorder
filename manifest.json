@@ -1,0 +1,19 @@
+{
+  "name": "回答錄音機",
+  "short_name": "回答錄音機",
+  "description": "點選問題即可播放預錄回答的本機 PWA。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f7f2",
+  "theme_color": "#f7f7f2",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
