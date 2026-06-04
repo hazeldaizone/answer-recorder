@@ -1,4 +1,4 @@
-const CACHE_NAME = "answer-recorder-v4";
+const CACHE_NAME = "answer-recorder-v5";
 const APP_SHELL = [
   "./",
   "./index.html",
